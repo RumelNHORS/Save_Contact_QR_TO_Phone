@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator</title>
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #CC8C18; /* Match button color */
+        }
+
+        form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            margin: 10px 0 5px;
+            display: block;
+        }
+
+        input[type="text"],
+        input[type="email"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus {
+            border-color: #CC8C18; /* Match button color */
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #CC8C18; /* Button color */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #b57914; /* Darker shade on hover */
+        }
+
+        h2 {
+            margin-top: 30px;
+            color: #CC8C18;
+        }
+
+        #qr-code {
+            margin: 20px 0;
+            border: 2px solid #CC8C18; /* Border around QR code */
+            border-radius: 8px;
+            background: white;
+            display: none; /* Initially hidden */
+            width: 200px; /* Set a fixed width */
+            height: auto; /* Maintain aspect ratio */
+            padding: 10px; /* Padding around QR code */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Shadow for depth */
+        }
+
+        #result {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        #save-contact {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #4CAF50; /* Green button color */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none;
+            transition: background-color 0.3s;
+        }
+
+        #save-contact:hover {
+            background-color: #45a049; /* Darker shade on hover */
+        }
+
+        /* Styles for the download button to match the generate button */
+        #download-qr {
+            margin-top: 10px;
+            padding: 10px; /* Match padding */
+            background-color: #CC8C18; /* Button color */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none; /* Initially hidden */
+            transition: background-color 0.3s;
+            width: 100%; /* Full width */
+        }
+
+        #download-qr:hover {
+            background-color: #b57914; /* Darker shade on hover */
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 400px) {
+            form {
+                width: 90%;
+            }
+
+            #qr-code {
+                width: 100%; /* Full width on small screens */
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Generate QR Code for Contact</h1>
+    <form id="qr-form" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="phone">Phone:</label>
+        <input type="text" id="phone" name="phone" required>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+
+        <button type="submit">Generate QR Code</button>
+    </form>
+
+    <h2>Your QR Code:</h2>
+    <div style="display: flex; justify-content: center;">
+        <img id="qr-code" src="" alt="QR Code" />
+    </div>
+    
+    <button id="download-qr">Download QR Code</button>
+
+    <h2>Scan the QR Code to Display and Save Contact</h2>
+    <div id="reader" style="width:300px;"></div>
+    <div id="result"></div>
+    <button id="save-contact" style="display:none;">Save to Contacts</button>
+
+    <script>
+        document.getElementById("qr-form").addEventListener("submit", function(event) {
+            event.preventDefault(); // Prevent form submission
+            
+            // Get the input values
+            const name = document.getElementById("name").value;
+            const phone = document.getElementById("phone").value;
+            const email = document.getElementById("email").value;
+
+            // Create the vCard format
+            const vCardData = `BEGIN:VCARD\nVERSION:3.0\nFN:${name}\nTEL:${phone}\nEMAIL:${email}\nEND:VCARD`;
+
+            // Generate the QR code
+            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(vCardData)}&size=200x200`;
+
+            // Set the QR code image source and display it
+            const qrCodeImage = document.getElementById("qr-code");
+            qrCodeImage.src = qrCodeUrl;
+            qrCodeImage.style.display = 'block'; // Show the QR code after generation
+
+            // Show download button
+            const downloadButton = document.getElementById("download-qr");
+            downloadButton.style.display = "block";
+
+            // Set up download action
+            downloadButton.onclick = function() {
+                const link = document.createElement('a');
+                link.href = qrCodeUrl;
+                link.download = `${name}_QRCode.png`;
+                link.click();
+            };
+        });
+
+        function onScanSuccess(decodedText, decodedResult) {
+            document.getElementById("result").innerText = decodedText;
+            document.getElementById("save-contact").style.display = "block";
+
+            const vCardData = decodedText.match(/FN:(.*?)\nTEL:(.*?)\nEMAIL:(.*?)\n/);
+            if (vCardData) {
+                const contact = {
+                    name: vCardData[1],
+                    phone: vCardData[2],
+                    email: vCardData[3],
+                };
+
+                document.getElementById("save-contact").onclick = function() {
+                    downloadVCard(contact);
+                };
+            } else {
+                alert("Failed to extract contact details from the QR code.");
+            }
+        }
+
+        var html5QrCode = new Html5Qrcode("reader");
+
+        html5QrCode.start(
+            { facingMode: "environment" },
+            {
+                fps: 10,
+                qrbox: 250
+            },
+            onScanSuccess
+        );
+
+        function downloadVCard(contact) {
+            const vCardData = `BEGIN:VCARD\nVERSION:3.0\nFN:${contact.name}\nTEL:${contact.phone}\nEMAIL:${contact.email}\nEND:VCARD`;
+            const blob = new Blob([vCardData], { type: "text/vcard" });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${contact.name}.vcf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
